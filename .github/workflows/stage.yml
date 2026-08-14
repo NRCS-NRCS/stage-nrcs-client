@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
         inputs:
             branch:
-                description: "Override branch/commit/tag from main repo (optional)"
+                description: "Branch / tag / SHA of NRCS-NRCS/nrcs-client to build. Leave empty to use the STAGE_BRANCH variable."
                 required: false
                 default: ""
     push:
@@ -42,6 +42,9 @@ jobs:
             - name: Parse config.json
               id: cfg
               uses: actions/github-script@v7
+              env:
+                  INPUT_BRANCH: ${{ inputs.branch }}
+                  STAGE_BRANCH: ${{ vars.STAGE_BRANCH }}
               with:
                   script: |
                       const fs = require('fs');
@@ -50,8 +53,22 @@ jobs:
                       const cfg = JSON.parse(raw);
 
                       const repository = cfg.repositoryUrl;
-                      const branchInput = process.env['INPUT_BRANCH'] || '';
-                      const ref = branchInput || cfg.branch || 'main';
+
+                      // Ref precedence: manual dispatch input > STAGE_BRANCH variable > config.json.
+                      const dispatchRef = (process.env['INPUT_BRANCH'] || '').trim();
+                      const varRef = (process.env['STAGE_BRANCH'] || '').trim();
+
+                      let ref, refSource;
+                      if (dispatchRef) {
+                          ref = dispatchRef; refSource = 'workflow_dispatch input';
+                      } else if (varRef) {
+                          ref = varRef; refSource = 'STAGE_BRANCH variable';
+                      } else {
+                          ref = cfg.branch || 'main'; refSource = 'config.json';
+                      }
+
+                      core.info(`Building ${repository}@${ref} (ref from ${refSource})`);
+                      core.summary.addRaw(`### Source\n\`${repository}@${ref}\` — via ${refSource}\n`).write();
                       const submodules = !!cfg.submodules;
                       const nodeVersion = cfg.nodeVersion || '18.x';
                       const buildOutput = cfg.buildOutput || '';
