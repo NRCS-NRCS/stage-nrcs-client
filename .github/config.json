@@ -3,11 +3,12 @@
     "branch": "develop",
     "submodules": true,
     "nodeVersion": "22.x",
+    "pnpmVersion": "10.4.0",
 
     "install": "pnpm install",
     "prebuild": "pnpm prebuild",
     "build": "pnpm build",
 
     "buildOutput": "out",
-    "cacheDir": "fullData"
+    "cacheDir": "data"
 }
